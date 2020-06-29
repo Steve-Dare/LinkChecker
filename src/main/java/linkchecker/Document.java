@@ -1,3 +1,5 @@
+package main.java.linkchecker;
+
 import java.util.ArrayList;
 
 public class Document {
