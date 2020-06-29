@@ -22,9 +22,11 @@ public class LinkChecker {
 
     public static void main(String[] args) {
 
+        // Change this path to point to location of docs to be analysed
         final String path = "/Users/stevedare/git/qp-docs/_10.0";
         final String extension = ".md";
 
+        Stats stats = new Stats();
         List<String> fileList = new ArrayList<>();
         ArrayList<Document> documents = processDocuments(path);
 
@@ -43,16 +45,20 @@ public class LinkChecker {
         System.out.println("Processing " + fileList.size() + " files, please wait...");
 
         for (String file : fileList) {
-            processFile(documents, file);
+            Stats fileStats =  processFile(documents, file);
+            stats = processStats(stats, fileStats);
         }
+
+        printStats(stats);
     }
 
-    private static void processFile(final ArrayList<Document> documents, final String filename) {
+    private static Stats processFile(final ArrayList<Document> documents, final String filename) {
         final String categories = "categories: ";
         final String slug = "slug: ";
 
         String pageCategories = "";
         String pageSlug = "";
+        Stats fileStats = new Stats();
 
         File file = new File(filename);
 
@@ -60,7 +66,8 @@ public class LinkChecker {
         try {
             scanner = new Scanner(file);
         } catch (FileNotFoundException e) {
-            return;
+            System.out.println("ERROR - File " + filename + " Not Found");
+            return fileStats;
         }
 
         while (scanner.hasNextLine()) {
@@ -77,33 +84,42 @@ public class LinkChecker {
             while (matcher.find()) {
                 String link = matcher.group().substring(1, matcher.group().length() - 1);
 
-                externalLinkValid(filename, link);
-                internalLinkValid(documents, filename, link, pageCategories, pageSlug);
-            }
+                Stats externalLinkStats =  externalLinkValid(filename, link);
+                fileStats = processStats(fileStats, externalLinkStats);
 
+                Stats internalLinkStats = internalLinkValid(documents, filename, link, pageCategories, pageSlug);
+                fileStats = processStats(fileStats, internalLinkStats);
+            }
         }
+
+        return fileStats;
     }
 
-    private static void externalLinkValid(final String file, final String link) {
+    private static Stats externalLinkValid(final String file, final String link) {
+        Stats externalLinkStats = new Stats();
 
         if (link.startsWith("http") && !link.contains("localhost") && !link.contains("127.0.0.1")) {
+            externalLinkStats.numberExternalLinks++;
             try {
                 URL url = new URL(link);
                 URLConnection conn = url.openConnection();
                 conn.connect();
             } catch (java.io.IOException e) {
-                System.out.println("FAIL:  file = " + file + ", link = " + link);
+                System.out.println("EXTERNAL LINK FAIL:  file = " + file + ", link = " + link);
+                externalLinkStats.numberExternalLinkFails++;
             }
         }
+
+        return externalLinkStats;
     }
 
-    private static void internalLinkValid(final ArrayList<Document> documents, final String file, final String link, final String pageCategories, final String pageSlug) {
+    private static Stats internalLinkValid(final ArrayList<Document> documents, final String file, final String link, final String pageCategories, final String pageSlug) {
+        Stats internalLinkStats = new Stats();
 
         if ((link.startsWith("..") || link.startsWith("#")) &&
                 !link.contains(".png") &&
                 !link.contains(".svg") &&
                 !link.contains(".pdf") &&
-                !link.contains("/mq/") &&
                 !link.equals("../../api/") &&
                 !link.startsWith("../../support") &&
                 !link.startsWith("../../tutorials") &&
@@ -111,31 +127,42 @@ public class LinkChecker {
                 !link.equals("../../../connectors/") &&
                 !link.startsWith("...")) {
 
-            checkForInternalLinkTrailingSlash(file, link);
-            checkInternalLinkValid(documents, file, link, pageCategories, pageSlug);
+            internalLinkStats.numberInternalLinks++;
+
+            Stats internalTrailingStats = checkForInternalLinkTrailingSlash(file, link);
+            internalLinkStats.numberInternalLinkTrailingSlash = internalTrailingStats.numberInternalLinkTrailingSlash;
+
+            Stats internalValidLinks = checkInternalLinkValid(documents, file, link, pageCategories, pageSlug);
+            internalLinkStats.numberInternalLinkFails = internalValidLinks.numberInternalLinkFails;
         }
+
+        return internalLinkStats;
     }
 
 
-    private static void checkForInternalLinkTrailingSlash(final String file, final String link) {
+    private static Stats checkForInternalLinkTrailingSlash(final String file, final String link) {
+        Stats internalTrailingLinkStats = new Stats();
 
         // check the header does not end in a forward slash
         if (link.endsWith("/")) {
-
             for (int i=link.length()-2; i>=0; i--) {
 
                 if (link.charAt(i) == '#') {
-                    System.out.println("TRAILING SLASH FAIL - file = " + file + ", link = " + link);
+                    System.out.println("TRAILING SLASH FAIL: file = " + file + ", link = " + link);
+                    internalTrailingLinkStats.numberInternalLinkTrailingSlash++;
                     break;
                 } else if (link.charAt(i) == '/') {
                     break;
                 }
             }
         }
+
+        return internalTrailingLinkStats;
     }
 
 
-    private static void checkInternalLinkValid(final ArrayList<Document> documents, final String file, final String link, final String pageCategories, final String pageSlug) {
+    private static Stats checkInternalLinkValid(final ArrayList<Document> documents, final String file, final String link, final String pageCategories, final String pageSlug) {
+        Stats internalLinkStats = new Stats();
         String header;
         String[] strArray;
         int srArraySize = 1;
@@ -179,11 +206,16 @@ public class LinkChecker {
         // cater for additional path in connecting/mq
         if (linkCategories.equals("connecting/mq") && (linkSlug.equals("connectors") || linkSlug.equals("setting-up-connectors"))) {
             linkCategories = "connecting";
+        } else if (linkCategories.equals("mq")) {
+            linkCategories = "connecting/mq";
         }
 
         if (!validLink(documents, linkCategories, linkSlug, header)) {
-            System.out.println("FAIL - file = " + file + ", link = " + link);
+            System.out.println("INTERNAL LINK FAIL: file = " + file + ", link = " + link);
+            internalLinkStats.numberInternalLinkFails++;
         }
+
+        return internalLinkStats;
     }
 
 
@@ -209,7 +241,7 @@ public class LinkChecker {
     }
 
 
-    public static String flatternTitle(String title) {
+    public static String flattenTitle(String title) {
         String flattenTitle = title.replace("#", " ").trim().toLowerCase().replace(" ", "-");
         flattenTitle = flattenTitle.replace("{{site.data.reuse.short_name}}", "event-streams");
         flattenTitle = flattenTitle.replace("{{site.data.reuse.long_name}}", "ibm-event-streams");
@@ -256,7 +288,7 @@ public class LinkChecker {
 
                     if (line.trim().startsWith("#")) {
                         if (!(line.replace(".", " ").replace("#", " ").trim().isEmpty())) {
-                            document.addTitle(flatternTitle(line));
+                            document.addTitle(flattenTitle(line));
                         }
                     }
                 }
@@ -277,4 +309,46 @@ public class LinkChecker {
             }
         }
     }
+
+    private static Stats processStats(final Stats totalStats, final Stats tmpStats) {
+        Stats calcStats = new Stats();
+
+        calcStats.numberExternalLinks = totalStats.numberExternalLinks + tmpStats.numberExternalLinks;
+        calcStats.numberExternalLinkFails = totalStats.numberExternalLinkFails + tmpStats.numberExternalLinkFails;
+        calcStats.numberInternalLinks = totalStats.numberInternalLinks + tmpStats.numberInternalLinks;
+        calcStats.numberInternalLinkTrailingSlash = totalStats.numberInternalLinkTrailingSlash + tmpStats.numberInternalLinkTrailingSlash;
+        calcStats.numberInternalLinkFails = totalStats.numberInternalLinkFails + tmpStats.numberInternalLinkFails;
+
+        return calcStats;
+    }
+
+    private static void printStats(final Stats stats) {
+
+        System.out.println("-----------------------");
+        System.out.println("Number of links checked: " + (stats.numberExternalLinks + stats.numberInternalLinks));
+        System.out.println("Number of external links checked: " + stats.numberExternalLinks);
+        System.out.println("Number of internal links checked: " + stats.numberInternalLinks);
+
+        System.out.println("Number of external failed links: " + stats.numberExternalLinkFails);
+        System.out.println("Number of internal link with trailing slash: " + stats.numberInternalLinkTrailingSlash);
+        System.out.println("Number of internal failed links: " + stats.numberInternalLinkFails);
+        System.out.println("-----------------------");
+
+        if (stats.numberExternalLinkFails == 0 &&
+                stats.numberInternalLinkTrailingSlash == 0 &&
+                stats.numberInternalLinkFails == 0) {
+            System.out.println("All links are ok.");
+        } else {
+            System.out.println("There are link problems");
+        }
+    }
+}
+
+class Stats {
+    int numberExternalLinks;
+    int numberExternalLinkFails;
+
+    int numberInternalLinks;
+    int numberInternalLinkFails;
+    int numberInternalLinkTrailingSlash;
 }
