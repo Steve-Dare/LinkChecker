@@ -29,7 +29,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>main.java.linkchecker.LinkChecker</mainClass>
+                            <mainClass>linkchecker.LinkChecker</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

@@ -1,4 +1,4 @@
-package main.java.linkchecker;
+package linkchecker;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -22,11 +22,15 @@ public class LinkChecker {
 
     public static void main(String[] args) {
 
-        // Change this path to point to location of docs to be analysed
-        final String path = "/Users/stevedare/git/qp-docs/_10.0";
+        if (args.length != 1) {
+            System.out.println("You must supply one argument to provide the base location of the documents.");
+            System.exit(1);
+        }
+
+        final String path = args[0];
         final String extension = ".md";
 
-        Stats stats = new Stats();
+        DocumentStats stats = new DocumentStats();
         List<String> fileList = new ArrayList<>();
         ArrayList<Document> documents = processDocuments(path);
 
@@ -45,20 +49,20 @@ public class LinkChecker {
         System.out.println("Processing " + fileList.size() + " files, please wait...");
 
         for (String file : fileList) {
-            Stats fileStats =  processFile(documents, file);
-            stats = processStats(stats, fileStats);
+            DocumentStats fileDocumentStats =  processFile(documents, file);
+            stats = processStats(stats, fileDocumentStats);
         }
 
         printStats(stats);
     }
 
-    private static Stats processFile(final ArrayList<Document> documents, final String filename) {
+    private static DocumentStats processFile(final ArrayList<Document> documents, final String filename) {
         final String categories = "categories: ";
         final String slug = "slug: ";
 
         String pageCategories = "";
         String pageSlug = "";
-        Stats fileStats = new Stats();
+        DocumentStats fileStats = new DocumentStats();
 
         File file = new File(filename);
 
@@ -84,19 +88,19 @@ public class LinkChecker {
             while (matcher.find()) {
                 String link = matcher.group().substring(1, matcher.group().length() - 1);
 
-                Stats externalLinkStats =  externalLinkValid(filename, link);
-                fileStats = processStats(fileStats, externalLinkStats);
+                DocumentStats externalLinkDocumentStats =  externalLinkValid(filename, link);
+                fileStats = processStats(fileStats, externalLinkDocumentStats);
 
-                Stats internalLinkStats = internalLinkValid(documents, filename, link, pageCategories, pageSlug);
-                fileStats = processStats(fileStats, internalLinkStats);
+                DocumentStats internalLinkDocumentStats = internalLinkValid(documents, filename, link, pageCategories, pageSlug);
+                fileStats = processStats(fileStats, internalLinkDocumentStats);
             }
         }
 
         return fileStats;
     }
 
-    private static Stats externalLinkValid(final String file, final String link) {
-        Stats externalLinkStats = new Stats();
+    private static DocumentStats externalLinkValid(final String file, final String link) {
+        DocumentStats externalLinkStats = new DocumentStats();
 
         if (link.startsWith("http") && !link.contains("localhost") && !link.contains("127.0.0.1")) {
             externalLinkStats.numberExternalLinks++;
@@ -113,8 +117,8 @@ public class LinkChecker {
         return externalLinkStats;
     }
 
-    private static Stats internalLinkValid(final ArrayList<Document> documents, final String file, final String link, final String pageCategories, final String pageSlug) {
-        Stats internalLinkStats = new Stats();
+    private static DocumentStats internalLinkValid(final ArrayList<Document> documents, final String file, final String link, final String pageCategories, final String pageSlug) {
+        DocumentStats internalLinkStats = new DocumentStats();
 
         if ((link.startsWith("..") || link.startsWith("#")) &&
                 !link.contains(".png") &&
@@ -129,10 +133,10 @@ public class LinkChecker {
 
             internalLinkStats.numberInternalLinks++;
 
-            Stats internalTrailingStats = checkForInternalLinkTrailingSlash(file, link);
-            internalLinkStats.numberInternalLinkTrailingSlash = internalTrailingStats.numberInternalLinkTrailingSlash;
+            DocumentStats internalTrailingDocumentStats = checkForInternalLinkTrailingSlash(file, link);
+            internalLinkStats.numberInternalLinkTrailingSlash = internalTrailingDocumentStats.numberInternalLinkTrailingSlash;
 
-            Stats internalValidLinks = checkInternalLinkValid(documents, file, link, pageCategories, pageSlug);
+            DocumentStats internalValidLinks = checkInternalLinkValid(documents, file, link, pageCategories, pageSlug);
             internalLinkStats.numberInternalLinkFails = internalValidLinks.numberInternalLinkFails;
         }
 
@@ -140,8 +144,8 @@ public class LinkChecker {
     }
 
 
-    private static Stats checkForInternalLinkTrailingSlash(final String file, final String link) {
-        Stats internalTrailingLinkStats = new Stats();
+    private static DocumentStats checkForInternalLinkTrailingSlash(final String file, final String link) {
+        DocumentStats internalTrailingLinkStats = new DocumentStats();
 
         // check the header does not end in a forward slash
         if (link.endsWith("/")) {
@@ -161,8 +165,8 @@ public class LinkChecker {
     }
 
 
-    private static Stats checkInternalLinkValid(final ArrayList<Document> documents, final String file, final String link, final String pageCategories, final String pageSlug) {
-        Stats internalLinkStats = new Stats();
+    private static DocumentStats checkInternalLinkValid(final ArrayList<Document> documents, final String file, final String link, final String pageCategories, final String pageSlug) {
+        DocumentStats internalLinkStats = new DocumentStats();
         String header;
         String[] strArray;
         int srArraySize = 1;
@@ -310,33 +314,33 @@ public class LinkChecker {
         }
     }
 
-    private static Stats processStats(final Stats totalStats, final Stats tmpStats) {
-        Stats calcStats = new Stats();
+    private static DocumentStats processStats(final DocumentStats totalDocumentStats, final DocumentStats tmpDocumentStats) {
+        DocumentStats calcDocumentStats = new DocumentStats();
 
-        calcStats.numberExternalLinks = totalStats.numberExternalLinks + tmpStats.numberExternalLinks;
-        calcStats.numberExternalLinkFails = totalStats.numberExternalLinkFails + tmpStats.numberExternalLinkFails;
-        calcStats.numberInternalLinks = totalStats.numberInternalLinks + tmpStats.numberInternalLinks;
-        calcStats.numberInternalLinkTrailingSlash = totalStats.numberInternalLinkTrailingSlash + tmpStats.numberInternalLinkTrailingSlash;
-        calcStats.numberInternalLinkFails = totalStats.numberInternalLinkFails + tmpStats.numberInternalLinkFails;
+        calcDocumentStats.numberExternalLinks = totalDocumentStats.numberExternalLinks + tmpDocumentStats.numberExternalLinks;
+        calcDocumentStats.numberExternalLinkFails = totalDocumentStats.numberExternalLinkFails + tmpDocumentStats.numberExternalLinkFails;
+        calcDocumentStats.numberInternalLinks = totalDocumentStats.numberInternalLinks + tmpDocumentStats.numberInternalLinks;
+        calcDocumentStats.numberInternalLinkTrailingSlash = totalDocumentStats.numberInternalLinkTrailingSlash + tmpDocumentStats.numberInternalLinkTrailingSlash;
+        calcDocumentStats.numberInternalLinkFails = totalDocumentStats.numberInternalLinkFails + tmpDocumentStats.numberInternalLinkFails;
 
-        return calcStats;
+        return calcDocumentStats;
     }
 
-    private static void printStats(final Stats stats) {
+    private static void printStats(final DocumentStats documentStats) {
 
         System.out.println("-----------------------");
-        System.out.println("Number of links checked: " + (stats.numberExternalLinks + stats.numberInternalLinks));
-        System.out.println("Number of external links checked: " + stats.numberExternalLinks);
-        System.out.println("Number of internal links checked: " + stats.numberInternalLinks);
+        System.out.println("Number of links checked: " + (documentStats.numberExternalLinks + documentStats.numberInternalLinks));
+        System.out.println("Number of external links checked: " + documentStats.numberExternalLinks);
+        System.out.println("Number of internal links checked: " + documentStats.numberInternalLinks);
 
-        System.out.println("Number of external failed links: " + stats.numberExternalLinkFails);
-        System.out.println("Number of internal link with trailing slash: " + stats.numberInternalLinkTrailingSlash);
-        System.out.println("Number of internal failed links: " + stats.numberInternalLinkFails);
+        System.out.println("Number of external failed links: " + documentStats.numberExternalLinkFails);
+        System.out.println("Number of internal link with trailing slash: " + documentStats.numberInternalLinkTrailingSlash);
+        System.out.println("Number of internal failed links: " + documentStats.numberInternalLinkFails);
         System.out.println("-----------------------");
 
-        if (stats.numberExternalLinkFails == 0 &&
-                stats.numberInternalLinkTrailingSlash == 0 &&
-                stats.numberInternalLinkFails == 0) {
+        if (documentStats.numberExternalLinkFails == 0 &&
+                documentStats.numberInternalLinkTrailingSlash == 0 &&
+                documentStats.numberInternalLinkFails == 0) {
             System.out.println("All links are ok.");
         } else {
             System.out.println("There are link problems");
@@ -344,11 +348,3 @@ public class LinkChecker {
     }
 }
 
-class Stats {
-    int numberExternalLinks;
-    int numberExternalLinkFails;
-
-    int numberInternalLinks;
-    int numberInternalLinkFails;
-    int numberInternalLinkTrailingSlash;
-}

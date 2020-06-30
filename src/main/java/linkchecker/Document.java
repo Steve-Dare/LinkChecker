@@ -1,4 +1,4 @@
-package main.java.linkchecker;
+package linkchecker;
 
 import java.util.ArrayList;
 
@@ -6,7 +6,7 @@ public class Document {
 
     private String slug;
     private String category;
-    private ArrayList<String> titles;
+    private final ArrayList<String> titles;
 
     public Document() {
         titles=new ArrayList<String>();
@@ -54,6 +54,7 @@ public class Document {
             for (String title : titles) {
                 if (requiredTitle.equals(title)) {
                     found = true;
+                    break;
                 }
             }
             return found;
