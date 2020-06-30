@@ -124,9 +124,9 @@ public class LinkChecker {
                 !link.contains(".png") &&
                 !link.contains(".svg") &&
                 !link.contains(".pdf") &&
-                !link.equals("../../api/") &&
-                !link.startsWith("../../support") &&
-                !link.startsWith("../../tutorials") &&
+                !link.contains("../api/") &&
+                !link.contains("../support") &&
+                !link.contains("../tutorials") &&
                 !link.equals("../../connectors/") &&
                 !link.equals("../../../connectors/") &&
                 !link.startsWith("...")) {
